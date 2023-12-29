@@ -4,13 +4,13 @@ class UpdateProfile(Ms.Message):
         try:
             if message is None:
                 self.message_info = {
-                    "Type": "UP",
+                    "Type": "UpdateProfile",
                     "phone_number": phone_number,
                     "location":location,
                     "name": name,
                     "national_number":national_number,
                 }
-            elif message["Type"] == "UP":
+            elif message["Type"] == "UpdateProfile":
                 super(UpdateProfile, self).__init__(message=message)
         except Exception as e:
             print(e)

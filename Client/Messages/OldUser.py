@@ -1,4 +1,6 @@
 from Messages import Message as Ms
+
+
 class OldUserMessage(Ms.Message):
     def __init__(self, name: str, password: str, unique_key: str, message: dict = None):
         try:
