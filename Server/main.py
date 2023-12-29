@@ -1,9 +1,7 @@
 import asyncio
 from controller import ServerController as sc
 from Model import Manager
-import sys
-sys.path.append('C:/Users/Laser/PycharmProjects/iss_project')
-sys.path.append('C:/Users/Laser/PycharmProjects/iss_project/Server/Model')
+
 db_manager = Manager.DBManager()
 
 

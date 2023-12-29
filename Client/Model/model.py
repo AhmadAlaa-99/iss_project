@@ -16,7 +16,7 @@ class DB:
                 if user['UniqueKey'] == public_key or user['Name'] == name:
                     return -1
         self.__DB['Users'].insert_one({
-            'name': name,
+             'name': name,
              'role_name': role_name,
              'UniqueKey': public_key
         })

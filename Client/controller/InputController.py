@@ -44,7 +44,7 @@ class CMDInput:
             ms = Messages.NewUser.NewUserMessage(user_name=user_name,
                                                  password=password,
                                                  role_name=role_name,
-                                                 unique_key=base64.b64encode(self.public_key).decode('utf8'))
+                                                 )
             self.last_message = ms.to_json_string()
             self.user_name = user_name
             self.role_name = role_name

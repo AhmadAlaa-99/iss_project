@@ -4,6 +4,7 @@ import socket as sk
 import sys
 import controller.InputController as Ic
 import Model.model as model
+from Cryptography import SymmetricLayer as sr
 class Client:
     def __init__(self, address='127.0.0.1', port='50050'):
         self.address = address
@@ -15,7 +16,7 @@ class Client:
         try:
             self.re_sock, self.wr_sock = await asyncio.open_connection(self.address, self.port, family=sk.AF_INET)
             while not self.wr_sock.is_closing():
-                mes = self.handle_sending_message()
+                mes = self.symmetric_encryption_handler(self.handle_sending_message())
                 if len(mes) == 1:
                     self.wr_sock.write(mes[0])
                     await self.wr_sock.drain()
@@ -26,7 +27,7 @@ class Client:
                     await self.wr_sock.drain()
                 data = await self.re_sock.read(self.receive_buffer)
                 if not self.re_sock.at_eof():
-                    await self.handle_receive_message(data)
+                    await self.handle_receive_message(self.symmetric_decrypt_handler(data))
                 else:
                     self.wr_sock.close()
         except ConnectionRefusedError:
@@ -39,6 +40,7 @@ class Client:
             self.input.init_input_ui()
         else:
             self.input.operations_ui()
+
         mes = json.loads(self.input.last_message) \
             if type(self.input.last_message) is str \
             else self.input.last_message
@@ -46,16 +48,17 @@ class Client:
             print(mes['Description'])
             mes1 = {
                 "Type": "Empty",
+                "Name": self.input.user_name,
                 "Description": "No Action"
             }
             return [bytes(json.dumps(mes1), 'utf8')]
-        #TYPES : NewUser - OldUser - SendMarks - SendProjects - UpdateProfile
-        elif mes['Type'] in ('SendMarks', 'SendProjects','UpdateProfile'):
+        elif mes['Type'] in ('Put', 'Update'):
             mes_b = bytes(self.input.last_message, 'utf8')
             mes_len = len(mes_b)
             mes1 = {
                 "Type": "Size",
-                "Size": mes_len
+                "Name": self.input.user_name,
+                "Size": 10 * mes_len
             }
             return [bytes(json.dumps(mes1), 'utf8'), mes_b]
         else:
@@ -74,14 +77,8 @@ class Client:
                         self.signup_handler(sub_dict)
                     if sub_dict['Type'] == 'Login':
                         self.login_handler(sub_dict)
-                    if sub_dict['Type'] == 'Put':
-                        self.put_handler(sub_dict)
-                    if sub_dict['Type'] == 'Get':
-                        await self.get_handler(sub_dict)
-                    if sub_dict['Type'] == 'Delete':
-                        self.delete_handler(sub_dict)
-                    if sub_dict['Type'] == 'Update':
-                        self.update_handler(sub_dict)
+                    if sub_dict['Type'] == 'UpdateProfile':
+                        self.update_profile_handler(sub_dict)
         except Exception as e:
             print('Error in Receive Message')
 
@@ -90,8 +87,8 @@ class Client:
             in_dict = json.loads(self.input.last_message)
             self.__DB.insert_new_user(name=in_dict['Name'],
                                       role_name=in_dict['role_name'],
-                                      public_key=in_dict['PublicKey'],
-                                      private_key=base64.b64encode(self.asl.get_private_key()).decode('utf8'))
+                                      UniqueKey=in_dict['UniqueKey']
+                                      )
             print('SignUp Done')
         else:
             sys.exit(mes_dict['Result'])
@@ -102,11 +99,15 @@ class Client:
         else:
             sys.exit(mes_dict['Result'])
 
-    async def get_handler(self, mes_dict):
+    def update_profile_handler(self, mes_dict):
+        print(mes_dict['Type'], ':', mes_dict['Result'])
+        
+    async def get_profile_handler(self, mes_dict):
         if mes_dict['Result'] == 'Done':
             buf = int(mes_dict['Size'])
             try:
                 data = await self.re_sock.read(buf)
+                data = self.symmetric_decrypt_handler(data)
                 mes_dict = json.loads(data)
                 for i, r in enumerate(mes_dict['Details']['Result']):
                     print('<<<' + str(i + 1) + '>>>')
@@ -117,12 +118,24 @@ class Client:
                 print('Error In Get')
         else:
             print(mes_dict['Type'], ':', mes_dict['Result'])
+    def symmetric_encryption_handler(self, message_list: list):
+        try:
+            crypto_messages = []
+            for m in message_list:
+                js_mes = json.loads(m)
+                if js_mes['Type'] in ['NewUser', 'OldUser']:
+                    self.sym_layer = sr.SymmetricLayer(js_mes['Password'].encode('utf8'))
+                    crypto_messages.append(m)
+                else:
+                    crypto_messages.append(self.sym_layer.enc_dict(m))
+            return crypto_messages
+        except Exception as e:
+            print('Symmetric Handler')
 
-    def put_handler(self, mes_dict):
-        print(mes_dict['Type'], ':', mes_dict['Result'])
-
-    def delete_handler(self, mes_dict):
-        print(mes_dict['Type'], ':', mes_dict['Result'])
-
-    def update_handler(self, mes_dict):
-        print(mes_dict['Type'], ':', mes_dict['Result'])
+    def symmetric_decrypt_handler(self, data):
+        try:
+            return self.sym_layer.dec_dict(data)
+        except Exception as e:
+            print(e)
+            print('Symmetric Decrypt Handler')
+            return None
