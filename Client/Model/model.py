@@ -35,11 +35,12 @@ class DB:
         res = self.query('Users', {
             'Name': username
         })
-        return res[0]['PublicKey']
+        return res[0]['PublicKey'] if res.count()==1 else None
 
     def get_private_key(self, username):
         res = self.query('Users', {
             'Name': username
         })
-        return res[0]['PrivateKey']
+        return res[0]['PrivateKey'] if res.count()==1 else None
+        
 

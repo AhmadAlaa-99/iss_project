@@ -3,6 +3,9 @@ import json
 import random
 import socket as sk
 import time
+from base64 import b64decode
+from Crypto.PublicKey import RSA
+from Crypto.Signature import pkcs1_15
 import Model.model as model
 import Messages.Respond as Messages
 from Cryptography import SymmetricLayer as sl
@@ -270,7 +273,9 @@ class Server:
     
     def symmetric_receive_decrypt(self, data: bytes):
         try:
-            dec_dic = sl.SymmetricLayer(key=self.session_key).dec_dict(data)
+            temp_dict = json.loads(data)
+            public_key = self.__DB.get_user_publicKey(temp_dict['Name'])
+            dec_dic = sl.SymmetricLayer(key=self.session_key).dec_dict(data,public_key)
             return dec_dic
         except Exception as e:
             print(e)

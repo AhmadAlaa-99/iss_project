@@ -10,7 +10,8 @@ class CryptoMessage(Ms.Message):
                     "Name": name,
                     "Message": enc_message,
                     "Nonce": nonce,
-                    "Tag": tag
+                    "Tag": tag,
+                    "Signature": signature
                 }
             elif message["Type"] == "Encrypt":
                 super(CryptoMessage, self).__init__(message=message)

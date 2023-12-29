@@ -7,7 +7,6 @@ import Model.model as model
 from Crypto.PublicKey import RSA
 from Cryptography import SymmetricLayer as sl
 from Cryptography import AsymmetricLayer as asl
-
 class Client:
     def __init__(self, address='127.0.0.1', port='50050'):
         self.address = address
@@ -158,13 +157,16 @@ class Client:
                 print('Error In Get')
         else:
             print(mes_dict['Type'], ':', mes_dict['Result'])
-   def symmetric_encryption_handler(self, message_list: list):
+    def symmetric_encryption_handler(self, message_list: list):
         try:
             crypto_messages = []
+            private_key = self.__DB.get_private_key(self.input.user_name)
+            if private_key is None:
+                private_key = base64.b64encode(self.asl.get_private_key())
             for m in message_list:
                 crypto_messages.append(sl.SymmetricLayer(
                     self.asl.get_session_key()
-                ).enc_dict(m))
+                ).enc_dict(m, private_key))
             return crypto_messages
         except Exception as e:
             print('Symmetric Handler')
