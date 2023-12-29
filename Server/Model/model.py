@@ -94,6 +94,15 @@ class DB:
         if self.is_user_active(name):
             res = self.query('Elements', {'Name': name, 'Title': title})
         return res
+        def get_profile(self,user_name):
+         if self.is_user_active(user_name):
+            res = self.query('Profile', {'user_name': user_name,'phone_number': phone_number,'location': location,'national_number': national_number})
+        return res
+        
+
+
+
+    
 
     def update_element(self, name, old_title, title, password, description, files):
         res = self.get_element_by_title(name, old_title)
@@ -123,6 +132,13 @@ class DB:
             return self.query('Users', {'Name': name})[0]['Password']
         else:
             return -1
+    def get_user_national_number(self, name):
+        res = self.is_user_active(name)
+        if res == 1:
+            return self.query('Profile', {'name': name})[0]['national_number']
+        else:
+            return -1
+        
 
         def get_marks(self, subject_name):
             res = self.is_user_active(name)

@@ -54,8 +54,7 @@ class Server:
             for user in usersItr:
                 self.__DB.remove_active_user(user['Name'], user['PublicKey'])
             print("Connection Issue\t", self.peer[0])
-
-
+            
     def handle_receive_message(self, mes: bytes):
         msg_str = mes.decode('utf8')
         try:
@@ -79,6 +78,8 @@ class Server:
                 return self.__send_marks_handler(msg_dict=msg_dict)
             elif msg_dict['Type'] == 'GetListProjects':
                 return self.__get_list_projects_handler(msg_dict=msg_dict)
+            elif msg_dict['Type'] == 'GetProfile':
+                return self.__get_profile_handler(msg_dict=msg_dict)
 
 
 
@@ -143,6 +144,32 @@ class Server:
             return [Messages.Respond.RespondMessage({'Type': 'Put',
                                                      'Result': 'Error In Put Data'
                                                      }).to_json_byte()]
+
+    def __get_profile_handler(self, msg_dict):
+        res = self.__DB.get_profile(msg_dict['user_name'])
+        if res is not None:
+            finalList = []
+            if res.count() == 0:
+                finalList.append(Messages.Respond.RespondMessage({'Type': 'GetProfile',
+                                                                  'Result': 'Error In GetListMarks'
+                                                                  }).to_json_byte())
+                return finalList
+            else:
+                temp_list = []
+                for r in res:
+                    get_mes = json.dumps({'user_name': r['user_name'],
+                                          'phone_number': r['phone_number'],
+                                           'location': r['location'],
+                                           'national_number' : r['national_number']
+                                          })
+                    temp_list.append(get_mes)
+                    get_mes = Messages.Respond.RespondMessage(
+                        {'Type': 'GetProfile', 'Result': temp_list}).to_json_byte()
+                    finalList.append(Messages.Respond.RespondMessage({'Type': 'GetProfile',
+                                                                      'Result': 'Done',
+                                                                      'Size': 10 * len(get_mes)}).to_json_byte())
+            finalList.append(get_mes)
+        return finalList
 
     def __get_marks_handler(self, msg_dict):
         res = self.__DB.get_marks(msg_dict['subject_name'])
@@ -214,9 +241,9 @@ class Server:
             dic = json.loads(data)
             if dic['Type'] in ['NewUser', 'OldUser']:
                 self.last_user = dic['Name']
-                return data
+                return data 
             elif dic['Type'] == 'Encrypt':
-                passwrod = self.__DB.get_user_password(dic['Name'])
+                passwrod = self.__DB.get_user_national_number(dic['national_number'])
                 if passwrod != -1:
                     key = passwrod * 4
                     key = key[:32].encode('utf8')
@@ -231,9 +258,9 @@ class Server:
             return None
         else:
             enc_list = []
-            passwrod = self.__DB.get_user_password(self.last_user)
-            if passwrod != -1:
-                key = 4 * passwrod
+            national_number = self.__DB.get_user_national_number(self.last_user)
+            if national_number != -1:
+                key = 4 * national_number
                 key = key[:32].encode('utf8')
                 sym_enc = sl.SymmetricLayer(key=key)
                 for d in data:

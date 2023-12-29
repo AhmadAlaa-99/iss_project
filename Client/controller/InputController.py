@@ -90,7 +90,7 @@ class CMDInput:
 
             if self.role_name.lower() == 'student':
                 input_str = input("<<Student Operations UI>>\n"
-                                  + "1.Update Profile\n2.Send Projects\n3.Browse Marks\n4.Exit\n"
+                                  + "1.Update Profile\n2.Send Projects\n3.Browse Marks\n4.Profile\n5.Exit\n"
                                   + "Choose: ").lower()
                 if input_str in ['Update_Profile', '1']:
                     self.__update_profile_ui()
@@ -98,11 +98,13 @@ class CMDInput:
                     self.__send_projects_ui()
                 elif input_str in ['Browse Marks', '3']:
                     self.__browse_marks_ui()
+                elif input_str in ['Browse Profile', '4']:
+                    self.__browse_profile_ui()
                 else:
                     sys.exit(0)
             elif self.role_name.lower() == 'doctor':
                 input_str = input("<<Doctor Operations UI>>\n"
-                                  + "1.Update Profile\n2.Send Marks\n3.Browse Projects\n4.Exit\n"
+                                  + "1.Update Profile\n2.Send Marks\n3.Browse Projects\n4.Profile\n5.Exit\n"
                                   + "Choose: ").lower()
                 if input_str in ['Update_Profile', '1']:
                     self.__update_profile_ui()
@@ -110,6 +112,8 @@ class CMDInput:
                     self.__send_marks_ui()
                 elif input_str in ['Browse Projects', '3']:
                     self.__browse_projects_ui()
+                elif input_str in ['Browse Profile', '4']:
+                    self.__browse_profile_ui()
                 else:
                     sys.exit(0)
             else:
@@ -205,6 +209,15 @@ class CMDInput:
         except Exception as e:
             print(e)
             sys.exit(-1)
+
+            
+    def __browse_profile_ui(self):
+          try:
+                ms = Messages.GetProfile.GetProfile(user_name=self.user_name)
+                self.last_message = ms.to_json_string()
+          except Exception as e:
+              print(e)
+              sys.exit(-1)
 
     def __send_marks_ui(self):
         try:

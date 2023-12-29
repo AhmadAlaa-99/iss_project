@@ -34,7 +34,7 @@ class Client:
             print("No Server Respond")
         except ConnectionResetError:
             print("Server Down")
-
+            
     def handle_sending_message(self):
         if self.input.user_name is None:
             self.input.init_input_ui()
@@ -52,7 +52,8 @@ class Client:
                 "Description": "No Action"
             }
             return [bytes(json.dumps(mes1), 'utf8')]
-        elif mes['Type'] in ('Put', 'Update'):
+            #types : 
+        elif mes['Type'] in ('UpdateProfile'):
             mes_b = bytes(self.input.last_message, 'utf8')
             mes_len = len(mes_b)
             mes1 = {
@@ -123,15 +124,14 @@ class Client:
             crypto_messages = []
             for m in message_list:
                 js_mes = json.loads(m)
-                if js_mes['Type'] in ['NewUser', 'OldUser']:
-                    self.sym_layer = sr.SymmetricLayer(js_mes['Password'].encode('utf8'))
+                if js_mes['Type'] in ['UpdateProfile']:
+                    self.sym_layer = sr.SymmetricLayer(js_mes['national_number'].encode('utf8'))
                     crypto_messages.append(m)
                 else:
                     crypto_messages.append(self.sym_layer.enc_dict(m))
             return crypto_messages
         except Exception as e:
             print('Symmetric Handler')
-
     def symmetric_decrypt_handler(self, data):
         try:
             return self.sym_layer.dec_dict(data)
