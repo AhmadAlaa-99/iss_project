@@ -1,9 +1,10 @@
 import os
 import pathlib
 import sys
+import pathlib
 import Messages.NewUser
 import Messages.OldUser
-import Model.model as model
+import Model.Model as model
 import Messages.GetListMarks
 import Messages.GetListProjects
 import Messages.SendMarks

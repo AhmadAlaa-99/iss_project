@@ -4,43 +4,72 @@ import socket as sk
 import sys
 import controller.InputController as Ic
 import Model.model as model
-from Cryptography import SymmetricLayer as sr
+from Crypto.PublicKey import RSA
+from Cryptography import SymmetricLayer as sl
+from Cryptography import AsymmetricLayer as asl
+
 class Client:
     def __init__(self, address='127.0.0.1', port='50050'):
         self.address = address
         self.port = port
-        self.input = Ic.CMDInput()
         self.receive_buffer = 2048
         self.__DB = model.DB()
-    async def handle(self):
-        try:
+        self.asl = asl.AsymmetricLayer()
+        self.input = Ic.CMDInput(self.asl.get_public_key())
+        async def handle(self):
+         try:
             self.re_sock, self.wr_sock = await asyncio.open_connection(self.address, self.port, family=sk.AF_INET)
-            while not self.wr_sock.is_closing():
-                mes = self.symmetric_encryption_handler(self.handle_sending_message())
-                if len(mes) == 1:
-                    self.wr_sock.write(mes[0])
-                    await self.wr_sock.drain()
-                elif len(mes) == 2:
-                    self.wr_sock.write(mes[0])
-                    await self.wr_sock.drain()
-                    self.wr_sock.write(mes[1])
-                    await self.wr_sock.drain()
-                data = await self.re_sock.read(self.receive_buffer)
-                if not self.re_sock.at_eof():
-                    await self.handle_receive_message(self.symmetric_decrypt_handler(data))
-                else:
-                    self.wr_sock.close()
+            conf = await self.config_message_handler()
+            if conf:
+                while not self.wr_sock.is_closing():
+                    mes = self.symmetric_encryption_handler(self.handle_sending_message())
+                    # mes = self.handle_sending_message()
+                    if len(mes) == 1:
+                        self.wr_sock.write(mes[0])
+                        await self.wr_sock.drain()
+                    elif len(mes) == 2:
+                        self.wr_sock.write(mes[0])
+                        await self.wr_sock.drain()
+                        self.wr_sock.write(mes[1])
+                        await self.wr_sock.drain()
+                    data = await self.re_sock.read(self.receive_buffer)
+                    if not self.re_sock.at_eof():
+                        await self.handle_receive_message(self.symmetric_decrypt_handler(data))
+                        # await self.handle_receive_message(data)
+                    else:
+                        self.wr_sock.close()
+            else:
+                self.wr_sock.close()
         except ConnectionRefusedError:
             print("No Server Respond")
         except ConnectionResetError:
             print("Server Down")
-            
+
+    async def config_message_handler(self):
+        try:
+            data = await self.re_sock.read(4096)
+            js_dic = json.loads(data)
+            if js_dic['Type'] == 'Config':
+                session_mes = self.asl.encrypt_config(js_dic)
+                self.wr_sock.write(session_mes)
+                await self.wr_sock.drain()
+                data = await self.re_sock.read(1024)
+                js_dic = json.loads(data)
+                if js_dic['Type'] == 'Respond':
+                    if js_dic['Details']['Result'] == 'Done':
+                        return True
+                    else:
+                        raise Exception(js_dic['Details']['Result'])
+        except Exception as e:
+            print(e)
+            print('Configuration Handler Error')
+            return False
+
     def handle_sending_message(self):
         if self.input.user_name is None:
             self.input.init_input_ui()
         else:
             self.input.operations_ui()
-
         mes = json.loads(self.input.last_message) \
             if type(self.input.last_message) is str \
             else self.input.last_message
@@ -53,8 +82,11 @@ class Client:
             }
             return [bytes(json.dumps(mes1), 'utf8')]
             #types : 
-        elif mes['Type'] in ('UpdateProfile'):
-            mes_b = bytes(self.input.last_message, 'utf8')
+        elif mes['Type'] in ('UpdateProfile','SendProjects'):
+             pr_key = self.__DB.get_private_key(self.input.user_name)
+            asy_dic = self.asl.encrypt_put_dic(self.input.last_message, pr_key)
+            asy_dic = json.dumps(asy_dic)
+            mes_b = bytes(asy_dic, 'utf8')
             mes_len = len(mes_b)
             mes1 = {
                 "Type": "Size",
@@ -80,6 +112,10 @@ class Client:
                         self.login_handler(sub_dict)
                     if sub_dict['Type'] == 'UpdateProfile':
                         self.update_profile_handler(sub_dict)
+                    if sub_dict['Type'] == 'get_profile_handler':
+                        self.update_profile_handler(sub_dict)
+                    if sub_dict['Type'] == 'SendProjects':
+                        self.send_project_handler(sub_dict)
         except Exception as e:
             print('Error in Receive Message')
 
@@ -102,7 +138,10 @@ class Client:
 
     def update_profile_handler(self, mes_dict):
         print(mes_dict['Type'], ':', mes_dict['Result'])
-        
+
+    def send_project_handler(self, mes_dict):
+        print(mes_dict['Type'],':', mes_dict['Result'])
+
     async def get_profile_handler(self, mes_dict):
         if mes_dict['Result'] == 'Done':
             buf = int(mes_dict['Size'])
@@ -119,22 +158,22 @@ class Client:
                 print('Error In Get')
         else:
             print(mes_dict['Type'], ':', mes_dict['Result'])
-    def symmetric_encryption_handler(self, message_list: list):
+   def symmetric_encryption_handler(self, message_list: list):
         try:
             crypto_messages = []
             for m in message_list:
-                js_mes = json.loads(m)
-                if js_mes['Type'] in ['UpdateProfile']:
-                    self.sym_layer = sr.SymmetricLayer(js_mes['national_number'].encode('utf8'))
-                    crypto_messages.append(m)
-                else:
-                    crypto_messages.append(self.sym_layer.enc_dict(m))
+                crypto_messages.append(sl.SymmetricLayer(
+                    self.asl.get_session_key()
+                ).enc_dict(m))
             return crypto_messages
         except Exception as e:
             print('Symmetric Handler')
+
     def symmetric_decrypt_handler(self, data):
         try:
-            return self.sym_layer.dec_dict(data)
+            return sl.SymmetricLayer(
+                self.asl.get_session_key()
+            ).dec_dict(data)
         except Exception as e:
             print(e)
             print('Symmetric Decrypt Handler')

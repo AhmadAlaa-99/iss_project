@@ -4,18 +4,15 @@ import json
 from base64 import b64encode, b64decode
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
-
 import Messages.Crypto
-
 
 class SymmetricLayer:
     def __init__(self, key: bytes = None):
         if key is None:
             self.__KEY = get_random_bytes(32)
         else:
-            key = key * 4
-            self.__KEY = key[:32]
-
+            self.__KEY = key
+            
     def encrypt(self, plain_text: bytes | str):
         symmetric = AES.new(self.__KEY, AES.MODE_EAX)
         plain_text = plain_text if type(plain_text) == bytes else plain_text.encode('utf8')

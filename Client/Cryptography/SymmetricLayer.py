@@ -1,16 +1,19 @@
 from __future__ import annotations
+
 import json
 from base64 import b64encode, b64decode
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
+
 import Messages.Crypto
+
+
 class SymmetricLayer:
     def __init__(self, key: bytes = None):
         if key is None:
             self.__KEY = get_random_bytes(32)
         else:
-            key = key * 4
-            self.__KEY = key[:32]
+            self.__KEY = key
 
     def encrypt(self, plain_text: bytes | str):
         symmetric = AES.new(self.__KEY, AES.MODE_EAX)
@@ -21,6 +24,17 @@ class SymmetricLayer:
         symmetric = AES.new(self.__KEY, AES.MODE_EAX, nonce=nonce)
         cipher_text = cipher_text if type(cipher_text) == bytes else cipher_text.encode('utf8')
         return symmetric.decrypt_and_verify(cipher_text, tag)
+
+    def encrypt_with_nonce(self, plain_text: bytes | str, nonce: bytes):
+        symmetric = AES.new(self.__KEY, AES.MODE_EAX, nonce=nonce)
+        plain_text = plain_text if type(plain_text) == bytes else plain_text.encode('utf8')
+        return symmetric.encrypt(plaintext=plain_text)
+
+    def decrypt_without_verify(self, cipher_text: bytes | str, nonce: bytes):
+        symmetric = AES.new(self.__KEY, AES.MODE_EAX, nonce=nonce)
+        cipher_text = cipher_text if type(cipher_text) == bytes else cipher_text.encode('utf8')
+        return symmetric.decrypt(cipher_text)
+
     def enc_dict(self, dic: dict | bytes | str):
         try:
             res = self.encrypt(json.dumps(dic)) if type(dic) == dict else self.encrypt(dic)
@@ -33,6 +47,7 @@ class SymmetricLayer:
             print(e)
             print('Encryption Error')
             return None
+
     def dec_dict(self, dic: bytes):
         try:
             dic = json.loads(dic)
