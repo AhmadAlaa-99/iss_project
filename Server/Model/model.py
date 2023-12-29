@@ -149,6 +149,8 @@ class DB:
 
 
 
+  
+
     def add_event(self, dic: dict):
         temp = {
             'Time': datetime.datetime.now().__str__()
@@ -168,6 +170,8 @@ class DB:
     def get_user_publicKey(self, user_name):
         res = self.query('Users', {'Name': user_name})
         return res[0]['PublicKey'] if res.count() == 1 else None
+
+  
         
    
 
